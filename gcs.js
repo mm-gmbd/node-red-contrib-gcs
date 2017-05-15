@@ -2,6 +2,12 @@ module.exports = function(RED) {
     "use strict";
     var fs = require('fs-extra');
 
+    /***************************************************************************
+    *                                                                          *
+    * GCS Config                                                               *
+    *                                                                          *
+    ***************************************************************************/
+
     function GCSNode(n) {
       RED.nodes.createNode(this,n);
       if (this.credentials &&
@@ -23,6 +29,12 @@ module.exports = function(RED) {
         }
     });
 
+    /***************************************************************************
+    *                                                                          *
+    * GCS File Upload                                                          *
+    *                                                                          *
+    ***************************************************************************/
+
     function GCSFileUploadNode(n) {
         RED.nodes.createNode(this,n);
         this.gcsConfig = RED.nodes.getNode(n.gcs);
@@ -38,30 +50,29 @@ module.exports = function(RED) {
             node.warn(RED._("gcs.warn.missing-credentials"));
             return;
         }
-        if (GCS) {
-            node.on("input", function(msg){
-              var destinationfilename = node.destinationfilename || msg.destinationfilename;
-              var localfilename = node.localfilename || msg.localfilename;
 
-              node.CheckForBucket(node.bucketname)
-              .then(function(data){
-                var bucketExists = data[0];
-                if (bucketExists) {
-                  return node.UploadDataToBucket(node.bucketname, localfilename, destinationfilename, node.gzip)
-                } else {
-                  node.warn("Warning: Bucket \""+node.bucketname+"\" does not exist. Use the \"Create Bucket\" GCS node to create the bucket first.")
-                }
-              },
-              function(err){
-                node.err(err);
-              })
-              .then(function(data){
-                node.send({"payload": true}); //TODO: Should this send a payload of false for error cases?
-              }, function(err){
-                node.warn(err);
-              })
-            })
-        }
+        node.on("input", function(msg){
+          var destinationfilename = node.destinationfilename || msg.destinationfilename;
+          var localfilename = node.localfilename || msg.localfilename;
+
+          node.CheckForBucket(node.bucketname)
+          .then(function(data){
+            var bucketExists = data[0];
+            if (bucketExists) {
+              return node.UploadDataToBucket(node.bucketname, localfilename, destinationfilename, node.gzip)
+            } else {
+              node.warn("Warning: Bucket \""+node.bucketname+"\" does not exist. Use the \"Create Bucket\" GCS node to create the bucket first.")
+            }
+          },
+          function(err){
+            node.err(err);
+          })
+          .then(function(data){
+            node.send({"payload": true}); //TODO: Should this send a payload of false for error cases?
+          }, function(err){
+            node.warn(err);
+          })
+        })
     }
     RED.nodes.registerType("gcs upload file",GCSFileUploadNode);
 
@@ -99,6 +110,106 @@ module.exports = function(RED) {
 
       return bucket.upload(localPath, uploadOptions)
     }
+
+    /***************************************************************************
+    *                                                                          *
+    * GCS File Upload Stream                                                   *
+    *                                                                          *
+    ***************************************************************************/
+
+    function GCSFileUploadStreamNode(n) {
+      RED.nodes.createNode(this,n);
+      this.gcsConfig = RED.nodes.getNode(n.gcs);
+      this.localfilename = n.localfilename || "";
+      this.destinationfilename = n.destinationfilename || "";
+      this.gzip = n.gzip || false;
+      this.bucketname = n.bucketname || "";
+
+      var node = this;
+      var GCS = this.gcsConfig ? this.gcsConfig.GCS : null;
+
+      if (!GCS) {
+          node.warn(RED._("gcs.warn.missing-credentials"));
+          return;
+      }
+
+      node.on("input", function(msg){
+        var destinationfilename = node.destinationfilename || msg.destinationfilename;
+        var localfilename = node.localfilename || msg.localfilename;
+
+        node.CheckForBucket(node.bucketname)
+        .then(function(data){
+          var bucketExists = data[0];
+          if (bucketExists) {
+            return node.UploadDataToBucket(node.bucketname, localfilename, destinationfilename, node.gzip, function(success){
+              if (success) {
+                node.log("Upload file (stream) success!")
+                node.send({"payload": true})
+              } else {
+                //TODO: Should this send a payload of "false"?
+              }
+            })
+          } else {
+            node.warn("Warning: Bucket \""+node.bucketname+"\" does not exist. Use the \"Create Bucket\" GCS node to create the bucket first.")
+          }
+        },
+        function(err){
+          node.err(err);
+        })
+      })
+
+    }
+    RED.nodes.registerType("gcs upload file stream", GCSFileUploadStreamNode);
+
+    GCSFileUploadStreamNode.prototype.CheckForBucket = function(bucketName) {
+      var node = this;
+
+      var GCS = this.gcsConfig ? this.gcsConfig.GCS : null;
+
+      if (!GCS) {
+          node.warn(RED._("gcs.warn.missing-credentials"));
+          return;
+      }
+
+      return GCS.bucket(bucketName).exists();
+    }
+
+    GCSFileUploadStreamNode.prototype.UploadDataToBucket = function(bucketName, localPath, destinationPath, gzip, cb) {
+      var node = this;
+
+      var GCS = this.gcsConfig ? this.gcsConfig.GCS : null;
+
+      if (!GCS) {
+          node.warn(RED._("gcs.warn.missing-credentials"));
+          return;
+      }
+
+      var bucket = GCS.bucket(bucketName);
+      var localReadStream = fs.createReadStream(localPath);
+      var uploadOptions = {
+        "destination": destinationPath,
+        "gzip": gzip
+      }
+      var remoteWriteStream = bucket.file(uploadOptions).createWriteStream();
+
+      remoteWriteStream.on('error', function(err){
+        node.warn(err);
+        cb(false);
+      })
+
+      remoteWriteStream.on('finish', function(){
+        node.log("Write stream complete")
+        cb(true);
+      })
+
+      localReadStream.pipe(remoteWriteStream);
+    }
+
+    /***************************************************************************
+    *                                                                          *
+    * GCS Create Bucket                                                        *
+    *                                                                          *
+    ***************************************************************************/
 
     function GCSCreateBucket(n) {
       RED.nodes.createNode(this,n);

@@ -89,6 +89,59 @@
     });
 </script>
 
+<script type="text/x-red" data-template-name="gcs upload file stream">
+    <div class="form-row">
+        <label for="node-input-gcs"><i class="fa fa-user"></i> <span>GCS Config</span></label>
+        <input type="text" id="node-input-gcs">
+    </div>
+    <div class="form-row node-input-localfilename">
+         <label for="node-input-localfilename"><i class="fa fa-file"></i> <span>Content source</span></label>
+         <input type="text" id="node-input-localfilename">
+    </div>
+    <div class="form-row node-input-bucketname">
+         <label for="node-input-bucketname"><i class="fa fa-file"></i> <span>GCS Bucket Name</span></label>
+         <input type="text" id="node-input-bucketname">
+    </div>
+    <div class="form-row node-input-destinationfilename">
+         <label for="node-input-destinationfilename"><i class="fa fa-file"></i> <span>GCS Destination File Nam</span></label>
+         <input type="text" id="node-input-destinationfilename">
+    </div>
+    <div class="form-row node-input-gzip">
+         <label for="node-input-gzip"><i class="fa fa-file"></i> <span>Gzip?</span></label>
+         <input type="checkbox" id="node-input-destinationfilename">
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> <span>Name</span></label>
+        <input type="text" id="node-input-name">
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="gcs upload file stream">
+    <p>Google Cloud Storage out node. Uploads content to a Google Cloud Storage bucket via Node Streams. The destination filename (the name that the file will be in the Google Cloud Storage bucket) can be specified in the node <b>destinationfilename</b> property or in the <b>msg.destinationfilename</b> property. The content is taken from either the node <b>localfilename</b> property or the <b>msg.localfilename</b> property.</p>
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('gcs upload file stream',{
+        category: 'storage-output',
+        color: '#34A853',
+        defaults: {
+            gcs: {type:"gcs-config",required:true},
+            localfilename: {value:"", required:true},
+            destinationfilename: {value:"", required:true},
+            bucketname: {value:"", required: true},
+            gzip: {value: false, required: true},
+            name: {value:""}
+        },
+        inputs:1,
+        outputs:1,
+        icon: "gcs.png",
+        align: "right",
+        label: function() {
+            return this.name ? this.name : "gcs upload file stream "+this.filename;
+        }
+    });
+</script>
+
 <script type="text/x-red" data-template-name="gcs-config">
     <div class="form-row">
         <label for="node-config-input-projectid"><i class="fa fa-bookmark"></i><span>Project ID</span></label>
