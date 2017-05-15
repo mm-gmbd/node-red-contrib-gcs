@@ -65,7 +65,7 @@ module.exports = function(RED) {
             }
           },
           function(err){
-            node.err(err);
+            node.error(err);
           })
           .then(function(data){
             node.send({"payload": true}); //TODO: Should this send a payload of false for error cases?
@@ -141,12 +141,12 @@ module.exports = function(RED) {
         .then(function(data){
           var bucketExists = data[0];
           if (bucketExists) {
-            return node.UploadDataToBucket(node.bucketname, localfilename, destinationfilename, node.gzip, function(success){
+            node.UploadDataToBucket(node.bucketname, localfilename, destinationfilename, node.gzip, function(success){
               if (success) {
                 node.log("Upload file (stream) success!")
                 node.send({"payload": true})
               } else {
-                //TODO: Should this send a payload of "false"?
+                node.send({"payload": false}) //TODO: Should this send a payload of "false"?
               }
             })
           } else {
@@ -154,7 +154,7 @@ module.exports = function(RED) {
           }
         },
         function(err){
-          node.err(err);
+          node.error(err);
         })
       })
 
@@ -187,10 +187,9 @@ module.exports = function(RED) {
       var bucket = GCS.bucket(bucketName);
       var localReadStream = fs.createReadStream(localPath);
       var uploadOptions = {
-        "destination": destinationPath,
         "gzip": gzip
       }
-      var remoteWriteStream = bucket.file(uploadOptions).createWriteStream();
+      var remoteWriteStream = bucket.file(destinationPath).createWriteStream(uploadOptions);
 
       remoteWriteStream.on('error', function(err){
         node.warn(err);
@@ -201,6 +200,8 @@ module.exports = function(RED) {
         node.log("Write stream complete")
         cb(true);
       })
+
+      node.log("Uploading contents (streaming) from \""+localPath+"\" to \"//"+bucketName+"/"+destinationPath+"\"");
 
       localReadStream.pipe(remoteWriteStream);
     }
