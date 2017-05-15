@@ -1,0 +1,25 @@
+{
+  "author": {
+    "name": "Max Mueller",
+    "email": "mmuelle4@gmail.com"
+  },
+  "dependencies": {
+    "@google-cloud/storage": "^1.1.0",
+    "fs-extra": "^3.0.1"
+  },
+  "devDependencies": {},
+  "directories": {},
+  "keywords": [
+    "node-red",
+    "gcs",
+    "firebase"
+  ],
+  "name": "node-red-contrib-gcs",
+  "node-red": {
+    "nodes": {
+      "gcs": "gcs.js"
+    }
+  },
+  "optionalDependencies": {},
+  "readme": "ERROR: No README data found!"
+}
